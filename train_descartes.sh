@@ -1,4 +1,4 @@
-python run_summarization.py \
+python ./transformers/examples/seq2seq/run_summarization.py \
     --learning_rate=3e-5 \
     --do_eval \
     --do_train \

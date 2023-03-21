@@ -75,15 +75,6 @@ for lang in languages:
 
 sources = {}
 targets = {}
-    
-#for lang, lang_code in lang_dict.items():
-#    f = open(Path(args.data_dir).joinpath("test" + ".source" + lang), 'r', encoding='utf-8')
-#    p = open(Path(args.data_dir).joinpath("test" + ".target" + lang), 'r', encoding='utf-8')
-#    lines = f.readlines()
-#    t_lines = p.readlines()
-#    sources[lang] = lines
-#    targets[lang] = t_lines
-#    f.close()
 
 f = open(Path(args.data_dir).joinpath("test" + ".embd"), 'r', encoding='utf-8')
 embds = f.readlines()
