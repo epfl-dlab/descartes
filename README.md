@@ -1,5 +1,5 @@
 # Descartes
-This repository contains the PyTorch implementation for the experiments in [Descartes: Generating Short Descriptions of Wikipedia Articles](https://arxiv.org/pdf/2205.10012.pdf). The codebase was built upon [huggingface transformers library](https://huggingface.co/docs/transformers/index).
+This repository contains the PyTorch implementation for the experiments in [Descartes: Generating Short Descriptions of Wikipedia Articles](https://arxiv.org/pdf/2205.10012.pdf). The codebase was built upon [huggingface](https://huggingface.co/docs/transformers/index) transformers library.
 
 ```
 @article{sakota2022descartes,
