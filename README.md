@@ -2,11 +2,11 @@
 This repository contains the PyTorch implementation for the experiments in [Descartes: Generating Short Descriptions of Wikipedia Articles](https://arxiv.org/pdf/2205.10012.pdf). The codebase was built upon [huggingface](https://huggingface.co/docs/transformers/index) transformers library.
 
 ```
-@article{sakota2022descartes,
-  title={Descartes: generating short descriptions of wikipedia articles},
-  author={Sakota, Marija and Peyrard, Maxime and West, Robert},
-  journal={arXiv preprint arXiv:2205.10012},
-  year={2022}
+@inproceedings{sakota2022descartes,
+  title={Descartes: Generating short descriptions of Wikipedia articles},
+  author={Šakota, Marija and Peyrard, Maxime and West, Robert},
+  booktitle={Proceedings of The Web Conference (WWW)},
+  year={2023}
 }
 ```
 Please consider citing our work, if you found the provided resources useful.
