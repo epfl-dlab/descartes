@@ -1,45 +1,51 @@
-from transformers import AutoTokenizer, AutoModelWithLMHead, AutoConfig
-from transformers import MBartForConditionalGeneration, MBartTokenizer
-from transformers.models.mbart.modeling_mbart import MBartForConditionalGenerationBaseline, MBartFourDecodersConditional
-from transformers import BertModel, BertTokenizer
-from transformers.tokenization_utils_base import BatchEncoding
 import torch
 import numpy as np
 import logging
 import os
 import argparse
+import sys
 from pathlib import Path
 logging.basicConfig(level=logging.ERROR)
+
+from src.models import MBartForConditionalGenerationDescartes
+from transformers import MBartTokenizer, MBartForConditionalGeneration
+from transformers import BertModel, BertTokenizer
+from transformers.tokenization_utils_base import BatchEncoding
+from transformers import MBartConfig
+
 np.random.seed(0)
 
+
 def prepare_inputs(inputs, device):
-        """
-        Prepare :obj:`inputs` before feeding them to the model, converting them to tensors if they are not already and
-        handling potential state.
-        """
-        for k, v in inputs.items():
-            if isinstance(v, torch.Tensor):
-                inputs[k] = v.to(device)
-            elif isinstance(v, dict):
-                for key, val in v.items():
-                    if isinstance(val, torch.Tensor):
-                        v[key] = val.to(device)
-                    elif isinstance(val, BatchEncoding) or isinstance(val, dict):
-                        for k1,v1 in val.items():
-                            if isinstance(v1, torch.Tensor):
-                                val[k1] = v1.to(device)
-        return inputs
+    """
+    Prepare :obj:`inputs` before feeding them to the model, converting them to tensors if they are not already and
+    handling potential state.
+    """
+    for k, v in inputs.items():
+        if isinstance(v, torch.Tensor):
+            inputs[k] = v.to(device)
+        elif isinstance(v, dict):
+            for key, val in v.items():
+                if isinstance(val, torch.Tensor):
+                    v[key] = val.to(device)
+                elif isinstance(val, BatchEncoding) or isinstance(val, dict):
+                    for k1, v1 in val.items():
+                        if isinstance(v1, torch.Tensor):
+                            val[k1] = v1.to(device)
+    return inputs
+
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--output_dir", type=str, help="directory where model is stored")
-parser.add_argument("--bert_path", default=None, type=str, help="path to folder with bert model (for summary embeddings)")
+parser.add_argument("--bert_path", default=None, type=str,
+                    help="path to folder with bert model (for summary embeddings)")
 parser.add_argument("--use_graph_embds", help="whether to use graph embeddings", action="store_true")
 parser.add_argument("--languages", type=str, help="list of language codes")
 parser.add_argument("--data_dir", type=str, help="directory to store the data")
 parser.add_argument("--output_folder", type=str, help="path to the folder where to save outputs")
 parser.add_argument("--baseline", help="whether to use baseline model", action="store_true")
-parser.add_argument("--fourdecoders", help="whether to use four decoders model", action="store_true")
-parser.add_argument("--randomization", help="whether to use randomize the choice of query in attention layer", action="store_true")
+parser.add_argument("--randomization", help="whether to use randomize the choice of query in attention layer",
+                    action="store_true")
 parser.add_argument("--graph_embd_length", type=int, default=128, help="length of graph embeddings")
 parser.add_argument("--lang_to_test", type=str, default=None)
 parser.add_argument("--mask_text", help="whether to mask input text", action="store_true")
@@ -48,15 +54,16 @@ args, uknown = parser.parse_known_args()
 
 if not os.path.exists(args.output_folder):
     os.makedirs(args.output_folder)
-config = AutoConfig.from_pretrained(args.output_dir)
+
+config = MBartConfig.from_pretrained(args.output_dir)
 config.graph_embd_length = args.graph_embd_length
+
 if args.baseline:
-    model = MBartForConditionalGenerationBaseline.from_pretrained(args.output_dir,config=config)
-elif args.fourdecoders:
-    model = MBartFourDecodersConditional.from_pretrained(args.output_dir,config=config)
+    model = MBartForConditionalGeneration.from_pretrained(args.output_dir,config=config)
 else:
-    model = MBartForConditionalGeneration.from_pretrained(args.output_dir, config=config)
+    model = MBartForConditionalGenerationDescartes.from_pretrained(args.output_dir, config=config)
 tokenizer = MBartTokenizer.from_pretrained(args.output_dir)
+
 if args.bert_path is not None:
     tokenizer_bert = BertTokenizer.from_pretrained(args.bert_path)
     bert_model = BertModel.from_pretrained(args.bert_path)
@@ -78,7 +85,6 @@ targets = {}
 
 f = open(Path(args.data_dir).joinpath("test" + ".embd"), 'r', encoding='utf-8')
 embds = f.readlines()
-print("length of embeddings: " + str(len(embds[0])))
 f.close()
 
 for lang, lang_code in lang_dict.items():
@@ -122,7 +128,7 @@ for i in range(len(embds)):
         tokenizer.src_lang = src_lang
         batch_enc = tokenizer([txt], padding=True, truncation=True)
         batch_encodings[lang] = batch_enc
-        available_langs.append(lang)    
+        available_langs.append(lang)
     input_ids = {}
     attention_mask = {}
     for key, val in batch_encodings.items():
@@ -132,16 +138,16 @@ for i in range(len(embds)):
         masks = torch.tensor(masks)
         input_ids[key] = inputs
         attention_mask[key] = masks
-    
+
     for lang in remaining_langs:
         input_ids[lang] = None
         attention_mask[lang] = None
 
     main_lang = None
     if args.randomization:
-        main_lang = np.random.choice(available_langs,1)[0]
+        main_lang = np.random.choice(available_langs, 1)[0]
 
-    #graph embeddings
+    # graph embeddings
     if args.use_graph_embds:
         embd = embds[i].strip()
         if embd == "0":
@@ -153,7 +159,7 @@ for i in range(len(embds)):
     else:
         embds_line = None
 
-    #summary embeddings
+    # summary embeddings
     if args.bert_path is not None:
         bert_inputs = {}
         for lang in target_langs:
@@ -167,7 +173,7 @@ for i in range(len(embds)):
             bert_inputs[lang] = bert_outs
     else:
         bert_inputs = None
-                
+
     batch["input_ids"] = input_ids
     batch["attention_mask"] = attention_mask
     batch["graph_embeddings"] = embds_line
@@ -182,11 +188,14 @@ for i in range(len(embds)):
                 bert_inputs_modified = bert_inputs.copy()
                 bert_inputs_modified.pop(tgt_lang)
                 batch["bert_inputs"] = bert_inputs_modified
-            translated_tokens = model.generate(**batch, max_length=20, min_length=2, length_penalty=2.0, num_beams=4, early_stopping=True, target_lang = target_lang, decoder_start_token_id=tokenizer.lang_code_to_id[target_lang], baseline=args.baseline, mask_text=args.mask_text, main_lang=main_lang)
+            translated_tokens = model.generate(**batch, max_length=20, min_length=2, length_penalty=2.0, num_beams=4,
+                                               early_stopping=True, target_lang=target_lang,
+                                               decoder_start_token_id=tokenizer.lang_code_to_id[target_lang],
+                                               baseline=args.baseline, mask_text=args.mask_text, main_lang=main_lang)
             output = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
-            outputs.write(output+"\n")
+            outputs.write(output + "\n")
             target_file.write(target)
-            lang_file.write(target_lang+"\n")
+            lang_file.write(target_lang + "\n")
     else:
         target_lang = args.lang_to_test
         tgt_lang = target_lang[0:2]
@@ -195,12 +204,15 @@ for i in range(len(embds)):
             bert_inputs_modified = bert_inputs.copy()
             bert_inputs_modified.pop(tgt_lang)
             batch["bert_inputs"] = bert_inputs_modified
-        translated_tokens = model.generate(**batch, max_length=20, min_length=2, length_penalty=2.0, num_beams=4, early_stopping=True, target_lang = target_lang, decoder_start_token_id=tokenizer.lang_code_to_id[target_lang], baseline=args.baseline, mask_text=args.mask_text,  main_lang=main_lang)
+        translated_tokens = model.generate(**batch, max_length=20, min_length=2, length_penalty=2.0, num_beams=4,
+                                           early_stopping=True, target_lang=target_lang,
+                                           decoder_start_token_id=tokenizer.lang_code_to_id[target_lang],
+                                           baseline=args.baseline, mask_text=args.mask_text, main_lang=main_lang)
         output = tokenizer.batch_decode(translated_tokens, skip_special_tokens=True)[0]
-        outputs.write(output+"\n")
+        outputs.write(output + "\n")
         target_file.write(target)
-        lang_file.write(target_lang+"\n")
-    
+        lang_file.write(target_lang + "\n")
+
 outputs.close()
 target_file.close()
 lang_file.close()
