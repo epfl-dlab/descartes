@@ -567,7 +567,13 @@ class MBartForConditionalGenerationDescartes(MBartForConditionalGeneration):
         inputs_tensor, model_input_name, model_kwargs = self._prepare_model_inputs(
             inputs, generation_config.bos_token_id, model_kwargs
         )
-        batch_size = inputs_tensor[list(inputs_tensor.keys())[0]].shape[0]
+        representative_tensor = None
+        for lang, t in inputs_tensor.items():
+            if isinstance(t, torch.Tensor):
+                representative_tensor = lang
+                break
+
+        batch_size = inputs_tensor[representative_tensor].shape[0]
 
         model_kwargs["target_lang"] = target_lang
         target_lang = target_lang[0:2]
@@ -769,7 +775,7 @@ class MBartForConditionalGenerationDescartes(MBartForConditionalGeneration):
             beam_scorer = BeamSearchScorer(
                 batch_size=batch_size,
                 num_beams=generation_config.num_beams,
-                device=inputs_tensor[list(inputs_tensor.keys())[0]].device,
+                device=inputs_tensor[representative_tensor].device,
                 length_penalty=generation_config.length_penalty,
                 do_early_stopping=generation_config.early_stopping,
                 num_beam_hyps_to_keep=generation_config.num_return_sequences,
